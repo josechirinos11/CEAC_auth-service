@@ -1,41 +1,56 @@
-import UserModel from "../models/UserModel.js";
-import bcrypt from "bcryptjs";
-import jwt from "jsonwebtoken";
-import dotenv from "dotenv";
+import User from '../models/User.js';
+import bcrypt from 'bcrypt';
+import jwt from 'jsonwebtoken';
 
-dotenv.config();
+export const login = async (req, res) => {
+    const { username, password } = req.body;
 
-class AuthController {
-    static async register(req, res) {
-        const { username, password } = req.body;
-        
-        if (!username || !password) {
-            return res.status(400).json({ message: "Todos los campos son obligatorios" });
-        }
-
-        const hashedPassword = await bcrypt.hash(password, 10);
-        const userId = await UserModel.createUser(username, hashedPassword);
-        
-        res.status(201).json({ message: "Usuario registrado", userId });
-    }
-
-    static async login(req, res) {
-        const { username, password } = req.body;
-
-        const user = await UserModel.findByUsername(username);
+    try {
+        // Buscar usuario
+        const user = await User.findByUsername(username);
         if (!user) {
-            return res.status(401).json({ message: "Usuario o contraseña incorrectos" });
+            return res.status(401).json({ message: 'Credenciales inválidas' });
         }
 
-        const isPasswordValid = await bcrypt.compare(password, user.password);
-        if (!isPasswordValid) {
-            return res.status(401).json({ message: "Usuario o contraseña incorrectos" });
+        // Verificar contraseña
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            return res.status(401).json({ message: 'Credenciales inválidas' });
         }
 
-        const token = jwt.sign({ id: user.id, username: user.username }, process.env.JWT_SECRET, { expiresIn: "1h" });
+        // Generar token JWT
+        const token = jwt.sign(
+            { id: user.id, username: user.username, role: user.role },
+            process.env.JWT_SECRET,
+            { expiresIn: '1h' }
+        );
 
-        res.json({ message: "Login exitoso", token });
+        res.json({ token });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error en el servidor' });
+    }
+};
+
+export const register = async (req, res) => {
+
+    let { username, password, role } = req.body;
+    if (!role) {
+        role = 'user';
+    }
+    try {
+        // Verificar si el usuario ya existe
+        const existingUser = await User.findByUsername(username);
+        if (existingUser) {
+            return res.status(400).json({ message: 'El usuario ya existe' });
+        }
+
+        // Crear usuario
+        const user = await User.create(username, password, role);
+
+        res.status(201).json(user);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ message: 'Error en el servidor' });
     }
 }
-
-export default AuthController;

@@ -1,16 +1,9 @@
-import express from "express";
-import cors from "cors";
-import dotenv from "dotenv";
-import sequelize from "./config/database.js";
-import authRoutes from "./routes/authRoutes.js";
+import express from 'express';
+import authRoutes from './routes/authRoutes.js';
 
-dotenv.config();
 const app = express();
-app.use(cors());
-app.use(express.json());
 
-app.use("/auth", authRoutes);
-
-sequelize.sync().then(() => console.log("DB Conectada Athentication"));
+app.use(express.json()); // Para parsear cuerpos JSON
+app.use('/auth', authRoutes); // Monta las rutas en /auth
 
 export default app;
